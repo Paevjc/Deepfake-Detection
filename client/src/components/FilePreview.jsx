@@ -17,7 +17,7 @@ const FilePreview = ({ file }) => {
 
   const isVideo = file.type.startsWith('video/');
   const isImage = file.type.startsWith('image/');
-  const fileUrl = URL.createObjectURL(file);
+  const fileUrl = file.url ? file.url : URL.createObjectURL(file);
 
   return (
     <div className="mt-6">
@@ -27,24 +27,15 @@ const FilePreview = ({ file }) => {
       
       {isVideo && (
         <div className="rounded-lg overflow-hidden max-w-full mx-auto">
-          {/* Container for video */}
           <div className="aspect-video bg-black w-full max-w-3xl mx-auto">
-            <video 
-              src={fileUrl} 
-              controls 
-              className="w-full h-full object-contain"
-            />
+            <video src={fileUrl} controls className="w-full h-full object-contain" />
           </div>
         </div>
       )}
-      
+
       {isImage && (
         <div className="rounded-lg overflow-hidden bg-gray-100 p-2 max-w-md mx-auto">
-          <img 
-            src={fileUrl} 
-            alt="Preview" 
-            className="w-full object-contain max-h-96 mx-auto"
-          />
+          <img src={fileUrl} alt="Preview" className="w-full object-contain max-h-96 mx-auto" />
         </div>
       )}
     </div>
