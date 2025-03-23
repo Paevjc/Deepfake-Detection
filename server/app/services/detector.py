@@ -216,7 +216,7 @@ class DeepfakeDetector:
             }
         ]
     
-    def analyze_video(self, video_path: str) -> Dict:
+    def analyse_video(self, video_path: str) -> Dict:
         """
         Analyze a video file to detect if it's a deepfake
         
