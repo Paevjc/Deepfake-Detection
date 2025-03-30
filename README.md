@@ -3,7 +3,7 @@
 This guide will help you set up a web application with a **React** frontend and a **FastAPI** backend. The project structure is as follows:  
 
 ```
-/project-root
+/deepfake-detection
 │── /client    # React frontend  
 │── /server    # FastAPI backend  
 │── README.md  # This file  
@@ -27,6 +27,8 @@ Ensure you have the following installed:
 ```sh
 git clone https://github.com/Shawnehh/deepfake-detection
 cd deepfake-detection
+
+git checkout dev # For latest branch
 ```
 
 ---
@@ -38,7 +40,7 @@ npm install  # Install dependencies
 npm run dev  # Start React development server
 ```
 
-The frontend should now be running at **http://localhost:8000**.
+The frontend should now be running at **http://localhost:3000**.
 
 ---
 
