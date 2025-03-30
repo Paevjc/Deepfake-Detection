@@ -19,5 +19,5 @@ class DetectionResponse(BaseModel):
     is_deepfake: bool
     confidence: float
     processing_time: float
-    frames_analysed: int
+    frames_analyzed: int
     detection_areas: Optional[List[DetectionArea]] = None

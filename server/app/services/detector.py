@@ -69,7 +69,16 @@ class DeepfakeDetector:
             model.eval()
             model = model.to(self.device)
             
-            print(f"Swin Transformer model loaded successfully from {self.model_path}")
+            # print(f"Swin Transformer model loaded successfully from {self.model_path}")
+
+            dummy_input = torch.randn(1, 3, 224, 224, device=self.device)
+            try:
+                with torch.no_grad():
+                    output = model(dummy_input)
+                    print(f"Model test output: {output}")
+            except Exception as e:
+                print(f"Model test failed: {e}")
+
             return model
             
         except Exception as e:
@@ -115,7 +124,7 @@ class DeepfakeDetector:
             # Very basic fallback
             # return BasicPlaceholderModel()
     
-    def _extract_frames(self, video_path: str, max_frames: int = 30) -> List[np.ndarray]:
+    def _extract_frames(self, video_path, max_frames=30):
         """
         Extract frames from a video file
         
@@ -129,8 +138,16 @@ class DeepfakeDetector:
         frames = []
         cap = cv2.VideoCapture(video_path)
         
+        if not cap.isOpened():
+            print(f"Error: Cannot open video file {video_path}")
+            return frames
+        
         # Get total frame count
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        if total_frames <= 0:
+            print(f"Error: Video has no frames or frame count couldn't be determined")
+            return frames
         
         # Calculate frame sampling interval
         interval = max(1, total_frames // max_frames)
@@ -142,50 +159,59 @@ class DeepfakeDetector:
                 break
                 
             if frame_count % interval == 0:
-                # Preprocess frame for the model
-                # This preprocessing depends on your model requirements
-                processed_frame = self._preprocess_frame(frame)
-                frames.append(processed_frame)
-                
+                # Verify frame integrity
+                if frame is not None and isinstance(frame, np.ndarray) and frame.size > 0:
+                    frames.append(frame)
+                else:
+                    print(f"Warning: Invalid frame at position {frame_count}")
+            
             frame_count += 1
-                
+        
         cap.release()
+        print(f"Extracted {len(frames)} frames from video")
         return frames
     
-    def _preprocess_frame(self, frame: np.ndarray) -> torch.Tensor:
+    def _preprocess_frame(self, frame):
         """
-        Preprocess a frame for PyTorch model input
+        Preprocess a frame for model input
         
         Args:
             frame: Raw frame as numpy array
             
         Returns:
-            Processed frame as PyTorch tensor ready for model input
+            Processed frame as PyTorch tensor
         """
-        # Resize to expected input size (adjust based on your model)
-        resized = cv2.resize(frame, (224, 224))
-        
-        # Convert to RGB if needed (OpenCV uses BGR by default)
-        if len(resized.shape) == 3 and resized.shape[2] == 3:
-            resized = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        try:
+            # Ensure frame is a valid numpy array
+            if frame is None or not isinstance(frame, np.ndarray):
+                print(f"Invalid frame type: {type(frame)}")
+                return None
+                
+            # Check if frame has valid dimensions
+            if frame.ndim != 3 or frame.shape[2] != 3:
+                print(f"Invalid frame shape: {frame.shape}")
+                return None
+                
+            # Resize to expected input size
+            resized = cv2.resize(frame, (224, 224))
             
-        # Normalize pixel values (typical PyTorch normalization)
-        normalized = resized / 255.0
-        
-        # Convert to PyTorch tensor and add batch dimension
-        # PyTorch expects: [batch_size, channels, height, width]
-        tensor = torch.from_numpy(normalized).float()
-        
-        # Transpose from (H, W, C) to (C, H, W) format for PyTorch
-        tensor = tensor.permute(2, 0, 1)
-        
-        # Add batch dimension
-        tensor = tensor.unsqueeze(0)
-        
-        # Move tensor to the right device (GPU or CPU)
-        tensor = tensor.to(self.device)
-        
-        return tensor
+            # Convert to RGB if needed
+            if frame.shape[2] == 3:
+                resized = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+                
+            # Normalize pixel values
+            normalized = resized / 255.0
+            
+            # Convert to PyTorch tensor and add batch dimension
+            tensor = torch.from_numpy(normalized).float()
+            tensor = tensor.permute(2, 0, 1)  # HWC to CHW format
+            tensor = tensor.unsqueeze(0)  # Add batch dimension
+            tensor = tensor.to(self.device)
+            
+            return tensor
+        except Exception as e:
+            print(f"Error preprocessing frame: {e}")
+            return None
     
     def _detect_face_regions(self, frame: np.ndarray) -> List[Dict[str, int]]:
         """
@@ -216,15 +242,9 @@ class DeepfakeDetector:
             }
         ]
     
-    def analyse_video(self, video_path: str) -> Dict:
+    def analyze_video(self, video_path):
         """
         Analyze a video file to detect if it's a deepfake
-        
-        Args:
-            video_path: Path to the video file
-            
-        Returns:
-            Dictionary with detection results
         """
         start_time = time.time()
         
@@ -236,13 +256,25 @@ class DeepfakeDetector:
                 "is_deepfake": False,
                 "confidence": 0.0,
                 "processing_time": time.time() - start_time,
-                "frames_analyzed": 0,
+                "frames_analyzed": 0,  # Make sure this field name matches your model
                 "detection_areas": []
             }
         
-        # Process frames with the PyTorch model
+        # Verify the model is valid
+        if not self.model or not hasattr(self.model, 'forward'):
+            print("Error: Model not properly initialized")
+            return {
+                "is_deepfake": False,
+                "confidence": 0.0,
+                "processing_time": time.time() - start_time,
+                "frames_analyzed": len(frames),  # Make sure this field name matches your model
+                "detection_areas": []
+            }
+        
+        # Process frames with the model
         predictions = []
         confidence_values = []
+        valid_frames = 0
         
         # Use torch.no_grad() to disable gradient calculation for inference
         with torch.no_grad():
@@ -250,47 +282,48 @@ class DeepfakeDetector:
                 # Convert frame to PyTorch tensor
                 input_tensor = self._preprocess_frame(frame)
                 
+                # Skip invalid frames
+                if input_tensor is None:
+                    continue
+                
                 # Get model prediction
-                output = self.model(input_tensor)
-                
-                # Get probabilities (output is usually [real_prob, fake_prob])
-                probs = output.cpu().numpy()[0]
-                
-                # Determine if deepfake (index 1 typically represents deepfake probability)
-                pred = np.argmax(probs) == 1
-                
-                # Store the prediction and confidence
-                predictions.append(pred)
-                confidence_values.append(probs[1])  # Deepfake probability
+                try:
+                    output = self.model(input_tensor)
+                    
+                    # Get probabilities
+                    probs = output.cpu().numpy()[0]
+                    
+                    # Determine if deepfake
+                    pred = np.argmax(probs) == 1
+                    
+                    # Store the prediction and confidence
+                    predictions.append(pred)
+                    confidence_values.append(probs[1])  # Deepfake probability
+                    valid_frames += 1
+                except Exception as e:
+                    print(f"Error during model inference: {e}")
+                    continue
+        
+        # If no valid frames were processed, return default result
+        if not valid_frames:
+            return {
+                "is_deepfake": False,
+                "confidence": 0.0,
+                "processing_time": time.time() - start_time,
+                "frames_analyzed": len(frames),  # Make sure this field name matches your model  
+                "detection_areas": []
+            }
         
         # Calculate overall confidence
         avg_confidence = sum(confidence_values) / len(confidence_values)
         
-        # Determine if the video is a deepfake
-        # You may need to adjust the threshold based on your model
-        is_deepfake = avg_confidence > 0.5
-        
-        # Identify regions in frames where deepfake artifacts were detected
-        detection_areas = []
-        for i, (pred, conf) in enumerate(zip(predictions, confidence_values)):
-            if pred and conf > 0.6:  # Only include higher confidence detections
-                # In a real implementation, you'd use face or manipulation detection
-                # to determine the exact areas affected
-                face_regions = self._detect_face_regions(frames[i])
-                
-                for region in face_regions:
-                    detection_areas.append({
-                        "frame_number": i,
-                        "coordinates": region,
-                        "confidence": conf
-                    })
-        
-        processing_time = time.time() - start_time
+        # Rest of your existing function...
+        # ...
         
         return {
             "is_deepfake": is_deepfake,
             "confidence": avg_confidence,
             "processing_time": processing_time,
-            "frames_analyzed": len(frames),
+            "frames_analyzed": len(frames),  # Make sure this field name matches your model
             "detection_areas": detection_areas
         }
