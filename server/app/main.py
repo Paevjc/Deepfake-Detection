@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import detection
 
@@ -8,13 +8,23 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",  # For local development
-        "https://deepfake-detector-frontend.fly.dev"  # Your deployed frontend
+        "http://localhost:3000/",
+        "https://deepfake-detector-frontend.fly.dev/"
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=[""],
+    allow_headers=[""],
+    expose_headers=["Content-Disposition"]
 )
+
+# Add security headers middleware for SharedArrayBuffer support
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    # These headers are needed for SharedArrayBuffer and cross-origin resource sharing
+    response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+    response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+    return response
 
 app.include_router(detection.router, prefix="/api")
 
@@ -22,6 +32,6 @@ app.include_router(detection.router, prefix="/api")
 async def root():
     return {"message": "Deepfake Detection API is running"}
 
-if __name__ == "__main__":
+if name == "main":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
