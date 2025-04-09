@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for client-falling-cherry-9423 on 2025-04-09T22:44:46+08:00
+# fly.toml app configuration file generated for deepfake-detector-frontend on 2025-04-09T23:07:13+08:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'client-falling-cherry-9423'
+app = 'deepfake-detector-frontend'
 primary_region = 'sin'
 
 [build]
