@@ -233,7 +233,7 @@ export default function FileUploader({ onFileStatusChange, resetTrigger = 0 }) {
       formData.append('file', file);
       
       // Send to backend API
-      const response = await fetch('http://localhost:8000/api/detect', {
+      const response = await fetch('/api/analyze-media', {
         method: 'POST',
         body: formData,
       });
