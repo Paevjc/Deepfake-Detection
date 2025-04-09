@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Any
 class DeepfakeDetector:
     """Service for detecting deepfakes in video files using the loaded Swin Transformer model"""
     
-    def __init__(self, model_path: str = "app/model/best_swin_transformer_model.pth", device: str = None):
+    def __init__(self, model_path: str = "model/best_swin_transformer_model.pth", device: str = None):
         """
         Initialize the deepfake detector with the PyTorch Swin Transformer model
         
