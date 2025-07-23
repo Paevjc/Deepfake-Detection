@@ -25,7 +25,7 @@ Ensure you have the following installed:
 
 ### 1. Clone the Repository  
 ```sh
-git clone https://github.com/Shawnehh/deepfake-detection
+git clone https://github.com/Paevjc/Deepfake-Detection
 cd deepfake-detection
 
 git checkout dev # For latest branch
