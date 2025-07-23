@@ -397,3 +397,37 @@ class DeepfakeDetector:
         print(f"Final detection: {'DEEPFAKE' if is_deepfake else 'REAL'} with confidence {prediction_confidence:.6f}")
         
         return result
+
+    # @app.route('/api/analyze-media', methods=['POST'])
+    # def analyze_media_endpoint():
+    #     try:
+    #         # Get video file from request
+    #         if 'file' not in request.files:
+    #             return jsonify({"detail": "No file provided"}), 400
+                
+    #         file = request.files['file']
+    #         if file.filename == '':
+    #             return jsonify({"detail": "Empty file provided"}), 400
+                
+    #         # Save file temporarily
+    #         temp_path = "/tmp/uploaded_video.mp4"
+    #         file.save(temp_path)
+            
+    #         # Validate file is a valid video
+    #         if not is_valid_video(temp_path):
+    #             return jsonify({"detail": "Invalid video file format"}), 400
+                
+    #         # Process with your analyzer
+    #         analyzer = DeepfakeDetector()
+    #         result = analyzer.analyze_video(temp_path)
+            
+    #         # Return results
+    #         return jsonify(result), 200
+            
+    #     except Exception as e:
+    #         # Log the full error for debugging
+    #         import traceback
+    #         traceback.print_exc()
+            
+    #         # Return a structured error response
+    #         return jsonify({"detail": f"Error processing video: {str(e)}"}), 500

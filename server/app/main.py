@@ -32,6 +32,6 @@ app.include_router(detection.router, prefix="/api")
 async def root():
     return {"message": "Deepfake Detection API is running"}
 
-if name == "main":
+if __name__ == "main":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -221,6 +221,11 @@ export default function FileUploader({ onFileStatusChange, resetTrigger = 0 }) {
     setDetectionError(null);
     
     try {
+      // Validate video blob
+      if (!videoBlob || videoBlob.size === 0) {
+        throw new Error('Invalid video file');
+      }
+      
       // Create a file object from the blob
       const file = new File(
         [videoBlob], 
@@ -228,38 +233,61 @@ export default function FileUploader({ onFileStatusChange, resetTrigger = 0 }) {
         { type: 'video/mp4' }
       );
       
+      console.log('Sending file:', file.name, file.type, `${(file.size / (1024 * 1024)).toFixed(2)} MB`);
+      
       // Create form data
       const formData = new FormData();
       formData.append('file', file);
       
-      // Send to backend API
+      // Send to backend API with timeout (increase for large videos)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+      
       const response = await fetch('/api/analyze-media', {
         method: 'POST',
         body: formData,
+        signal: controller.signal
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to analyze video');
+      clearTimeout(timeoutId);
+      
+      // Get response as text first for debugging
+      const responseText = await response.text();
+      
+      // Try to parse as JSON
+      let jsonData;
+      try {
+        jsonData = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse response as JSON:', responseText);
+        throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}...`);
       }
       
-      // Process the response
-      const results = await response.json();
-      setDetectionResults(results);
+      // Handle error responses
+      if (!response.ok) {
+        throw new Error(jsonData.detail || `Server error: ${response.status}`);
+      }
+      
+      // Process successful response
+      setDetectionResults(jsonData);
       
       // Add detection results to metadata
       setFileMetadata(prev => ({
         ...prev,
         deepfakeAnalysis: {
-          isDeepfake: results.is_deepfake,
-          confidence: (results.confidence * 100).toFixed(2) + '%',
-          processingTime: results.processing_time.toFixed(2) + 's'
+          isDeepfake: jsonData.is_deepfake,
+          confidence: (jsonData.confidence * 100).toFixed(2) + '%',
+          processingTime: jsonData.processing_time.toFixed(2) + 's'
         }
       }));
       
     } catch (error) {
+      if (error.name === 'AbortError') {
+        setDetectionError('Request timed out. The video may be too large or the server is busy.');
+      } else {
+        setDetectionError(error.message);
+      }
       console.error('Deepfake detection error:', error);
-      setDetectionError(error.message);
     } finally {
       setDetecting(false);
     }

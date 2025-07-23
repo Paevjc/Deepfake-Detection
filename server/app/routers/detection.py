@@ -16,8 +16,8 @@ router = APIRouter(tags=["Deepfake Detection"])
 detector = DeepfakeDetector()
 
 # Create temp directories if they don't exist
-os.makedirs("/app/tmp/uploads", exist_ok=True)
-os.makedirs("/app/tmp/processed", exist_ok=True)
+os.makedirs("app/tmp/uploads", exist_ok=True)
+os.makedirs("app/tmp/processed", exist_ok=True)
 
 # Rename the endpoint to avoid ad blockers
 @router.post("/analyze-media", response_model=DetectionResponse)
